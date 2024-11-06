@@ -1,0 +1,74 @@
+import os
+import schedule
+import time
+from datetime import datetime
+from cryptography.fernet import Fernet
+
+# Diretório para armazenar as chaves diárias
+CHAVE_DIR = "chaves_diarias"
+
+# Função para criar o diretório de chaves, se não existir
+if not os.path.exists(CHAVE_DIR):
+    os.makedirs(CHAVE_DIR)
+
+# Gerar uma nova chave e salvar com a data atual
+def gerar_chave_diaria():
+    chave = Fernet.generate_key()
+    data_atual = datetime.now().strftime("%Y-%m-%d")
+    caminho_chave = os.path.join(CHAVE_DIR, f"chave_{data_atual}.key")
+    
+    with open(caminho_chave, "wb") as chave_file:
+        chave_file.write(chave)
+    print(f"Chave diária gerada para {data_atual}")
+
+# Carregar a chave da data específica
+def carregar_chave(data=None):
+    if data is None:
+        data = datetime.now().strftime("%Y-%m-%d")
+    caminho_chave = os.path.join(CHAVE_DIR, f"chave_{data}.key")
+    
+    with open(caminho_chave, "rb") as chave_file:
+        return chave_file.read()
+
+# Criptografar dados com a chave do dia
+def criptografar_dados(dados, chave):
+    f = Fernet(chave)
+    dados_criptografados = f.encrypt(dados.encode())
+    return dados_criptografados
+
+# Descriptografar dados com a chave do dia
+def descriptografar_dados(dados_criptografados, chave):
+    f = Fernet(chave)
+    dados_descriptografados = f.decrypt(dados_criptografados)
+    return dados_descriptografados.decode()
+
+# Função para agendar a geração de chave a cada 24 horas
+def agendar_chave_diaria():
+    schedule.every(24).hours.do(gerar_chave_diaria)
+    print("Agendamento de geração de chave a cada 24 horas.")
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+# Exemplo de uso
+if __name__ == "__main__":
+    # Gerar a chave inicial para o dia
+    gerar_chave_diaria()
+
+    # Carregar a chave do dia
+    chave = carregar_chave()
+
+    # Dados para criptografar
+    dados = "Este é um texto secreto."
+
+    # Criptografar os dados
+    dados_criptografados = criptografar_dados(dados, chave)
+    print(f"Dados Criptografados: {dados_criptografados}")
+
+    # Descriptografar os dados
+    dados_descriptografados = descriptografar_dados(dados_criptografados, chave)
+    print(f"Dados Descriptografados: {dados_descriptografados}")
+
+    # Agendar a criação de novas chaves diárias
+    agendar_chave_diaria()
